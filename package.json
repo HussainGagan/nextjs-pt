@@ -6,22 +6,28 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "kysely-codegen": "npx kysely-codegen --out-file './src/types/index.d.ts'"
   },
   "dependencies": {
+    "@auth/kysely-adapter": "^0.1.15",
+    "kysely": "^0.27.2",
+    "mysql2": "^3.7.1",
+    "next": "14.1.0",
+    "next-auth": "^4.24.5",
     "react": "^18",
-    "react-dom": "^18",
-    "next": "14.1.0"
+    "react-dom": "^18"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0",
+    "kysely-codegen": "^0.11.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
-    "eslint": "^8",
-    "eslint-config-next": "14.1.0"
+    "typescript": "^5"
   }
 }

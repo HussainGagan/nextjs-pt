@@ -1,0 +1,62 @@
+# Product Catelogue DB
+
+- products
+  - id
+  - name
+  - description
+  - brands ([1,2,3,4])
+  - colors (['#asd'.'#zxc'])
+  - occasion (formal,business,beach)
+  - gender (men, women, boy, girl)
+  - was_price
+  - price
+  - discount (calculate post creation)
+  - cat
+  - uat
+- categories
+  - id
+  - name
+  - slug
+  - icon
+  - parent_id
+  - cat
+  - uat
+- product_categories
+  - id
+  - pid
+  - cid
+  - cat
+  - uat
+- brands
+  - id
+  - name
+  - website
+  - logo
+  - cat
+  - uat
+- reviews
+  - id
+  - user_id
+  - prod_id
+  - message
+  - rating
+  - cat
+  - uat
+- comments
+  - id
+  - user_id
+  - prod_id
+  - message
+  - parent_id
+  - cat
+  - uat
+- user
+  - id
+  - name
+  - email
+  - email_verified_at
+  - pwd
+  - address
+  - city
+  - cat
+  - uat
