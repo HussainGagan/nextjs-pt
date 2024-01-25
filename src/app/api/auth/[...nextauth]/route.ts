@@ -57,26 +57,26 @@ const handler = NextAuth({
   },
   callbacks: {
     async jwt({ token, user, account }) {
-      if (account && user) {
-        const existingUser = await db
-          .selectFrom("users")
-          .select("id")
-          .where("provider_id", "=", account.providerAccountId)
-          .executeTakeFirst();
+      // if (account && user) {
+      //   const existingUser = await db
+      //     .selectFrom("users")
+      //     .select("id")
+      //     .where("provider_id", "=", account.providerAccountId)
+      //     .executeTakeFirst();
 
-        if (!existingUser) {
-          // User does not exist, insert them into the database
-          await db
-            .insertInto("users")
-            .values({
-              name: user.name as string,
-              email: user.email as string,
-              provider: account.provider,
-              provider_id: account.providerAccountId,
-            })
-            .execute();
-        }
-      }
+      //   if (!existingUser) {
+      //     // User does not exist, insert them into the database
+      //     await db
+      //       .insertInto("users")
+      //       .values({
+      //         name: user.name as string,
+      //         email: user.email as string,
+      //         provider: account.provider,
+      //         provider_id: account.providerAccountId,
+      //       })
+      //       .execute();
+      //   }
+      // }
 
       if (user) {
         token.id = user.id;

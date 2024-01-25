@@ -1,12 +1,16 @@
-import { getProducts } from "@/utils";
+import PaginationButton from "@/components/PaginationButton";
+import { formatCurrency, getProducts } from "@/utils";
 
-export default async function Products() {
-  const products = await getProducts();
-
-  console.log(products);
-
+export default async function Products({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
+  const { page = 1 } = searchParams as any;
+  const { products, count } = await getProducts(+page);
+  console.log(count);
   return (
-    <div>
+    <div className="py-20">
       <h1 className="text-4xl mb-8">Product List</h1>
       <table>
         <thead>
@@ -17,7 +21,6 @@ export default async function Products() {
             <th>Price</th>
             <th>Colors</th>
             <th>Gender</th>
-            <th>Discount</th>
             <th>Brands</th>
             <th>Occasion</th>
           </tr>
@@ -27,28 +30,26 @@ export default async function Products() {
             <tr key={product.id}>
               <td>{product.id}</td>
               <td>{product.name}</td>
-              <td>{product.description}</td>
+              <td className="max-w-64">
+                <p className="truncate w-full">{product.description}</p>
+              </td>
               <td>
-                {!!Number(product.discount) && (
-                  <span className="line-through">{product.price}</span>
-                )}
-                {"    "}
-                <span>
-                  {Number(
-                    Number(product.price) -
-                      Number(product.price) * (Number(product.discount) / 100)
-                  ).toFixed(2)}
+                <span className="line-through">
+                  {formatCurrency(product.old_price)}
                 </span>
+                <br />
+                <span>{formatCurrency(product.price)}</span> <br />
+                <span>{product.discount}% off</span>
               </td>
               <td>{product.colors}</td>
               <td>{product.gender}</td>
-              <td>{product.discount}%</td>
               <td>{product.brands}</td>
               <td>{product.occasion}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      <PaginationButton count={count} />
     </div>
   );
 }

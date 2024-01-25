@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import seedDatabase from "@/utils/seedDatabase";
 
 const ACTIVE_ROUTE = "py-1 px-2 text-gray-300 bg-gray-700";
 const INACTIVE_ROUTE =
@@ -33,6 +34,15 @@ export default function NavMenu() {
   return (
     <div className="flex gap-8">
       <AuthButton />
+      <button
+        className="ml-auto"
+        onClick={async () => {
+          await seedDatabase();
+        }}
+      >
+        Seed Database
+      </button>
+
       {/* <hr className="my-4" /> */}
       {/* <ul>
         <Link href="/">

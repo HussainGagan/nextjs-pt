@@ -7,27 +7,27 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 
 export interface Brands {
-  created_at: Generated<Date>;
   id: Generated<number>;
   name: string;
-  updated_at: Generated<Date>;
   website: string | null;
+  updated_at: Generated<Date>;
+  created_at: Generated<Date>;
 }
 
 export interface Categories {
-  created_at: Generated<Date>;
   id: Generated<number>;
-  name: string | null;
+  name: string;
   parent_id: number | null;
+  created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }
 
 export interface Comments {
-  comment: string | null;
   id: Generated<number>;
-  parent_comment_id: number | null;
-  product_id: number;
   user_id: number | null;
+  product_id: number;
+  comment: string | null;
+  parent_comment_id: number | null;
 }
 
 export interface ProductCategories {
@@ -43,13 +43,13 @@ export interface Products {
   colors: string;
   created_at: Generated<Date>;
   description: string;
-  discount: Generated<Decimal>;
+  discount: string;
   gender: "boy" | "girl" | "men" | "women";
   id: Generated<number>;
   name: string;
   occasion: string;
-  old_price: Decimal;
-  price: Decimal;
+  old_price: string;
+  price: string;
   updated_at: Generated<Date>;
 }
 
@@ -64,12 +64,10 @@ export interface Reviews {
 }
 
 export interface Users {
-  email: string;
   id: Generated<number>;
+  email: string;
   name: string;
-  password: string | null;
-  provider: string | null;
-  provider_id: string | null;
+  password: string;
 }
 
 export interface Database {
