@@ -28,6 +28,8 @@ export interface Comments {
   product_id: number;
   comment: string | null;
   parent_comment_id: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
 }
 
 export interface ProductCategories {
@@ -50,7 +52,9 @@ export interface Products {
   occasion: string;
   old_price: string;
   price: string;
+  image_url: string;
   updated_at: Generated<Date>;
+  rating: string;
 }
 
 export interface Reviews {
@@ -68,6 +72,8 @@ export interface Users {
   email: string;
   name: string;
   password: string;
+  address: string | null;
+  city: string | null;
 }
 
 export interface Database {

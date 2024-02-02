@@ -1,13 +1,19 @@
 import { faker } from "@faker-js/faker";
 
 import { Users, Products, Decimal, Comments } from "../types";
+import bcrypt from "bcrypt";
+
 import { db } from "../../db";
 
 function generateUser() {
+  const email = faker.internet.email();
+  const passwordHash = bcrypt.hashSync(email, 10);
   return {
     name: faker.person.fullName(),
-    email: faker.internet.email(),
-    password: faker.internet.password(),
+    email: email,
+    password: passwordHash,
+    address: faker.location.streetAddress({ useFullAddress: true }),
+    city: faker.location.city(),
   };
 }
 

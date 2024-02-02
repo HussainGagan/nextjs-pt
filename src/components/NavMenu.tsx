@@ -34,59 +34,18 @@ export default function NavMenu() {
   return (
     <div className="flex gap-8">
       <AuthButton />
-      <button
+      <Link href={"/products"}>Products</Link>
+      <Link href={"/products/add"}>Add Product</Link>
+      <Link href={"/categories"}>Categories</Link>
+      <Link href={"/brands"}>Brands</Link>
+      {/* <button
         className="ml-auto"
         onClick={async () => {
           await seedDatabase();
         }}
       >
         Seed Database
-      </button>
-
-      {/* <hr className="my-4" /> */}
-      {/* <ul>
-        <Link href="/">
-          <li className={pathname === "/" ? ACTIVE_ROUTE : INACTIVE_ROUTE}>
-            Home
-          </li>
-        </Link>
-        <Link href="/protected">
-          <li
-            className={
-              pathname === "/protected" ? ACTIVE_ROUTE : INACTIVE_ROUTE
-            }
-          >
-            Protected Route
-          </li>
-        </Link>
-        <Link href="/serverAction">
-          <li
-            className={
-              pathname === "/serverAction" ? ACTIVE_ROUTE : INACTIVE_ROUTE
-            }
-          >
-            Server Action
-          </li>
-        </Link>
-        <Link href="/apiFromClient">
-          <li
-            className={
-              pathname === "/apiFromClient" ? ACTIVE_ROUTE : INACTIVE_ROUTE
-            }
-          >
-            API From Client
-          </li>
-        </Link>
-        <Link href="/apiFromServer">
-          <li
-            className={
-              pathname === "/apiFromServer" ? ACTIVE_ROUTE : INACTIVE_ROUTE
-            }
-          >
-            API From Server
-          </li>
-        </Link>
-      </ul> */}
+      </button> */}
     </div>
   );
 }

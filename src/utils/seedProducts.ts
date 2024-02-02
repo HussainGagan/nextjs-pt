@@ -28,17 +28,28 @@ function generateProduct() {
     faker.internet.color()
   );
 
+  const numberOfOccasions = faker.number.int({ min: 1, max: 3 });
+  const selectedOccasions = faker.helpers
+    .shuffle(occasions)
+    .slice(0, numberOfOccasions);
+
   return {
     name: faker.commerce.productName(),
     description: faker.commerce.productDescription(),
-    brands: brands.toString(),
+    brands: JSON.stringify(brands),
     colors: colors.toString(),
     discount: discountPercentage.toFixed(2).toString(),
     // prettier-ignore
     gender: faker.helpers.arrayElement(["boy", "girl", "men", "women"]) as ("boy" | "girl" | "men" | "women"),
-    occasion: faker.helpers.arrayElement(occasions),
+    occasion: selectedOccasions.join(","),
+    image_url: faker.image.urlLoremFlickr({
+      width: 300,
+      height: 200,
+      category: "nature",
+    }),
     old_price: oldPrice.toFixed(2).toString(),
     price: price.toFixed(2).toString(),
+    rating: String(faker.number.int({ min: 1, max: 5 })),
   };
 }
 

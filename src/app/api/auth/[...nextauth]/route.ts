@@ -1,10 +1,11 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "../../../../../db";
+import bcrypt from "bcrypt";
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     // GitHubProvider({
     //   clientId: process.env.GITHUB_ID ?? "",
@@ -35,7 +36,9 @@ const handler = NextAuth({
           .where("email", "=", credentials?.email as any)
           .executeTakeFirst();
 
-        if (user && user.password === credentials?.password) {
+        const match = bcrypt.compare(credentials?.password, user?.password);
+
+        if (user && match) {
           return {
             id: String(user.id),
             name: user.name,
@@ -91,6 +94,8 @@ const handler = NextAuth({
       return session;
     },
   },
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

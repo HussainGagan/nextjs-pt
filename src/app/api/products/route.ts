@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "../../../../db";
 
-import { getProducts } from "@/utils";
+import { getProducts } from "@/actions/productActions";
 
 export async function GET(req: NextRequest) {
   try {
