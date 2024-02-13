@@ -1,12 +1,16 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Select from "react-select";
+// import Select from "react-select";
 import { MultiSelect } from "react-multi-select-component";
-import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import { occasionOptions } from "../../constant";
+import { useMemo } from "react";
+import dynamic from "next/dynamic";
+import { useQueryParams } from "@/hooks/useQueryParams";
+const Select = dynamic(() => import("react-select"), { ssr: false });
 
 const discountOptions = [
   { value: "", label: "None" },
@@ -15,90 +19,39 @@ const discountOptions = [
   { value: "11-15", label: "From 11 to 15%" },
 ];
 
-async function fetchDataFromApi(url) {
-  const res = await fetch(url);
-  const data = await res.json();
-  return data;
-}
-
-function Filter() {
-  const queryParams = useSearchParams();
-  const searchParams = new URLSearchParams(queryParams);
-  const [brandsOption, setBrandsOption] = useState([]);
-  const [defaultBrandsOption, setDefaultBrandsOption] = useState([]);
-  const [categoriesOption, setCategoriesOption] = useState([]);
-  const [categoriesSelected, setCategoriesSelected] = useState([]);
-  const [selectedGender, setSelectedGender] = useState(
-    () => searchParams.get("gender") || ""
-  );
-  const [sliderValue, setSliderValue] = useState(
-    () => searchParams.get("priceRangeTo") || 2000
-  );
-  const [occasionOption, setOccasionOption] = useState([]);
-  const [defaultOccasionOption, setDefaultOccasionOption] = useState(() =>
-    searchParams
-      .get("occasions")
-      ?.split(",")
-      .map((item) => ({ value: item, label: item }))
-  );
-
-  const [defaultDiscountOption, setDefaultDiscountOption] = useState(() => {
-    const value = searchParams.get("discount");
-    if (!value) return discountOptions[0];
-    const [from, to] = value?.split("-");
-    return { value, label: `From ${from}% to ${to}%` };
-  });
-
-  const [loading, setLoading] = useState(true);
-
+function Filter({ categories, brands }) {
+  const searchParams = useQueryParams();
   const router = useRouter();
 
-  useEffect(() => {
-    async function fetchOptions() {
-      // const brands = await fetchDataFromApi("/api/brands");
-      // const categories = await fetchDataFromApi("/api/categories");
+  const brandsOption: any[] = useMemo(() => {
+    return brands.map((brand: any) => ({
+      value: brand.id,
+      label: brand.name,
+    }));
+  }, [brands]);
 
-      const [brands, categories, occasion] = await Promise.all([
-        fetchDataFromApi("/api/brands"),
-        fetchDataFromApi("/api/categories"),
-        // fetchDataFromApi("/api/occasion"),
-      ]);
+  const categoriesOption: any[] = useMemo(() => {
+    return categories.map((category: any) => ({
+      value: category.id,
+      label: category.name,
+    }));
+  }, [categories]);
 
-      // console.log(occasion);
+  const occasionOption: any[] = useMemo(() => {
+    return occasionOptions.map((item) => {
+      return {
+        value: item,
+        label: item,
+      };
+    });
+  }, []);
 
-      const brandsOption = brands.map((brand) => ({
-        value: brand.id,
-        label: brand.name,
-      }));
-      const categoriesOption = categories.map((category) => ({
-        value: category.id,
-        label: category.name,
-      }));
-
-      const occasionOption = occasionOptions.map((item) => {
-        return {
-          value: item,
-          label: item,
-        };
-      });
-
-      let defaultOptionBrands = [];
-      let defaultOptionCategories = [];
-      if (searchParams.get("brandId")) {
-        const defaultBrandId = searchParams.get("brandId")?.split(",");
-
-        defaultOptionBrands = defaultBrandId?.map((brandId) => {
-          return {
-            value: +brandId,
-            label: brandsOption.find((option) => option.value === +brandId)
-              .label,
-          };
-        });
-      }
-      if (searchParams.get("categoryId")) {
-        const defaultCategoryId = searchParams.get("categoryId")?.split(",");
-
-        defaultOptionCategories = defaultCategoryId?.map((categoryId) => {
+  const [categoriesSelected, setCategoriesSelected] = useState(() => {
+    if (searchParams.get("categoryId")) {
+      return searchParams
+        .get("categoryId")
+        ?.split(",")
+        .map((categoryId) => {
           return {
             value: +categoryId,
             label: categoriesOption.find(
@@ -106,22 +59,76 @@ function Filter() {
             ).label,
           };
         });
-      }
-
-      setBrandsOption(brandsOption);
-      setDefaultBrandsOption(defaultOptionBrands);
-      setCategoriesOption(categoriesOption);
-      setCategoriesSelected(defaultOptionCategories);
-      setOccasionOption(occasionOption);
-      setLoading(false);
+    } else {
+      return [];
     }
-    fetchOptions();
+  });
+  const [selectedGender, setSelectedGender] = useState(
+    () => searchParams.get("gender") || ""
+  );
+  const [sliderValue, setSliderValue] = useState(
+    () => searchParams.get("priceRangeTo") || 2000
+  );
+
+  const [sliderChanged, setSliderChanged] = useState(false);
+
+  const initialDiscountOptions = useMemo(() => {
+    if (searchParams.get("discount")) {
+      const value = searchParams.get("discount");
+      if (!value) return discountOptions[0];
+      const [from, to] = value?.split("-");
+      return { value, label: `From ${from}% to ${to}%` };
+    } else {
+      return discountOptions[0];
+    }
   }, []);
+
+  const initialBrandOptions = useMemo(() => {
+    if (searchParams.get("brandId")) {
+      return searchParams
+        .get("brandId")
+        ?.split(",")
+        .map((brandId) => {
+          return {
+            value: +brandId,
+            label: brandsOption.find((option) => option.value === +brandId)
+              .label,
+          };
+        });
+    } else {
+      return [];
+    }
+  }, [brandsOption]);
+
+  const initialOccasionOptions = useMemo(() => {
+    if (searchParams.get("occasions")) {
+      return searchParams
+        .get("occasions")
+        ?.split(",")
+        .map((item) => ({ value: item, label: item }));
+    } else {
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sliderChanged) {
+      const handler = setTimeout(() => {
+        // setSliderValue(tempSliderValue);
+        searchParams.delete("page");
+        searchParams.delete("pageSize");
+        searchParams.set("priceRangeTo", `${sliderValue}`);
+        router.push(`/products?${searchParams.toString()}`, { scroll: false });
+      }, 300);
+
+      return () => clearTimeout(handler);
+    }
+  }, [sliderValue]);
 
   function handleBrandsSelect(e) {
     if (e.length === 0) {
       searchParams.delete("brandId");
-      router.push(`/products?${searchParams.toString()}`);
+      router.push(`/products?${searchParams.toString()}`, { scroll: false });
       return;
     }
 
@@ -130,14 +137,14 @@ function Filter() {
       .join(",");
 
     searchParams.set("brandId", selectedBrandsId);
-    router.push(`/products?${searchParams.toString()}`);
+    router.push(`/products?${searchParams.toString()}`, { scroll: false });
   }
 
   function handleCategoriesSelected(e) {
     setCategoriesSelected(e);
     if (e.length === 0) {
       searchParams.delete("categoryId");
-      router.push(`/products?${searchParams.toString()}`);
+      router.push(`/products?${searchParams.toString()}`, { scroll: false });
       return;
     }
     const selectedCategoriesId = e
@@ -147,34 +154,31 @@ function Filter() {
     searchParams.delete("page");
     searchParams.delete("pageSize");
     searchParams.set("categoryId", selectedCategoriesId);
-    router.push(`/products?${searchParams.toString()}`);
+    router.push(`/products?${searchParams.toString()}`, { scroll: false });
   }
 
   function handleSlider(e) {
     setSliderValue(e.target.value);
-    searchParams.delete("page");
-    searchParams.delete("pageSize");
-    searchParams.set("priceRangeTo", `${e.target.value}`);
-    router.push(`/products?${searchParams.toString()}`);
+    setSliderChanged(true);
   }
 
   const handleGenderChange = (e) => {
     setSelectedGender(e.target.value);
     if (!e.target.value) {
       searchParams.delete("gender");
-      router.push(`/products?${searchParams.toString()}`);
+      router.push(`/products?${searchParams.toString()}`, { scroll: false });
       return;
     }
     searchParams.delete("page");
     searchParams.delete("pageSize");
     searchParams.set("gender", `${e.target.value}`);
-    router.push(`/products?${searchParams.toString()}`);
+    router.push(`/products?${searchParams.toString()}`, { scroll: false });
   };
 
   function handleOccasions(e) {
     if (e.length === 0) {
       searchParams.delete("occasions");
-      router.push(`/products?${searchParams.toString()}`);
+      router.push(`/products?${searchParams.toString()}`, { scroll: false });
       return;
     }
 
@@ -185,35 +189,30 @@ function Filter() {
     searchParams.delete("page");
     searchParams.delete("pageSize");
     searchParams.set("occasions", selectedOccasions);
-    router.push(`/products?${searchParams.toString()}`);
+    router.push(`/products?${searchParams.toString()}`, { scroll: false });
   }
 
   function handleDiscount(e) {
     if (e.value === "") {
       searchParams.delete("discount");
-      router.push(`/products?${searchParams.toString()}`);
+      router.push(`/products?${searchParams.toString()}`, { scroll: false });
       return;
     }
     searchParams.delete("page");
     searchParams.delete("pageSize");
     searchParams.set("discount", e.value);
-    router.push(`/products?${searchParams.toString()}`);
+    router.push(`/products?${searchParams.toString()}`, { scroll: false });
   }
 
-  function handleClearAll() {
-    searchParams.delete("categoryId");
-    searchParams.delete("brandId");
-    searchParams.delete("priceRangeTo");
-    searchParams.delete("gender");
-    searchParams.delete("occasions");
-    searchParams.delete("discount");
-    router.push(`/products?${searchParams.toString()}`);
-    router.refresh();
-  }
-
-  if (loading) {
-    return <p className="text-lg">Loading options...</p>;
-  }
+  // function handleClearAll() {
+  //   searchParams.delete("categoryId");
+  //   searchParams.delete("brandId");
+  //   searchParams.delete("priceRangeTo");
+  //   searchParams.delete("gender");
+  //   searchParams.delete("occasions");
+  //   searchParams.delete("discount");
+  //   router.push(`/products?${searchParams.toString()}`);
+  // }
 
   return (
     <div className="w-full">
@@ -229,7 +228,7 @@ function Filter() {
           isMulti
           name="brands"
           onChange={handleBrandsSelect}
-          defaultValue={defaultBrandsOption}
+          defaultValue={initialBrandOptions}
         />
       </div>
       <div className="w-1/3 flex items-center gap-4 mb-4">
@@ -237,7 +236,7 @@ function Filter() {
         <MultiSelect
           className="text-black flex-1"
           options={categoriesOption}
-          value={categoriesSelected}
+          value={categoriesSelected as []}
           labelledBy="categories select"
           hasSelectAll={false}
           onChange={handleCategoriesSelected}
@@ -315,7 +314,7 @@ function Filter() {
           isMulti
           name="occasion"
           onChange={handleOccasions}
-          defaultValue={defaultOccasionOption}
+          defaultValue={initialOccasionOptions}
         />
       </div>
 
@@ -325,7 +324,7 @@ function Filter() {
           className="flex-1 text-black"
           options={discountOptions}
           name="discount"
-          defaultValue={defaultDiscountOption}
+          defaultValue={initialDiscountOptions}
           onChange={handleDiscount}
         />
       </div>

@@ -1,8 +1,10 @@
+//@ts-nocheck
+
 "use client";
 
-import { basicSchema } from "@/schemas";
-import { getAllCategories } from "@/actions/categoryActions";
-import { getAllBrands } from "@/actions/brandActions";
+import { basicSchema } from "@/schemas/product";
+import { getCategories } from "@/actions/categoryActions";
+import { getBrands } from "@/actions/brandActions";
 import {
   MapBrandIdsToName,
   getProduct,
@@ -14,15 +16,23 @@ import { useFormik } from "formik";
 import { useEffect, useState } from "react";
 import Select from "react-select";
 import { occasionOptions } from "../../../../../constant";
-import { useRouter } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
+import { UpdateProducts } from "@/types";
+import { toast } from "react-toastify";
 
 function EditProduct({ params }: { params: { id: string } }) {
   const { id } = params;
+
+  if (!Number(id)) {
+    notFound();
+  }
 
   const [loading, setLoading] = useState(true);
   const [brandsOption, setBrandsOption] = useState([]);
   const [occasionOption, setOccasionOption] = useState([]);
   const [categoriesOption, setCategoriesOption] = useState([]);
+  const [initialValues, setInitialValues] = useState({});
+  const [error, setError] = useState(false);
 
   const router = useRouter();
   const {
@@ -59,34 +69,62 @@ function EditProduct({ params }: { params: { id: string } }) {
         .join(",");
 
       const categoryIds = values?.categories.map((category) => category.value);
-      console.log(categoryIds);
-      const updatedProduct = {
+
+      const updatedProduct: UpdateProducts = {
         name: values.name,
         description: values.description,
         old_price: Number(values.old_price).toFixed(2).toString(),
         discount: Number(values.discount).toFixed(2).toString(),
         colors: values.colors,
         brands: brandIds,
-        gender: values.gender,
+        gender: values.gender as "boy" | "girl" | "men" | "women",
         occasion: occasion,
         rating: Number(values.rating).toFixed(1).toString(),
         ...(values.image_url ? { image_url: values.image_url } : {}),
       };
-      console.log(updatedProduct);
-      await new Promise((res) => setTimeout(res, 1000));
-      await updateProduct(+id, updatedProduct);
-      await updateProductCategories(+id, categoryIds);
-      router.push(`/products/${id}/edit`);
-      router.refresh();
-      console.log("submitted");
+
+      const res1 = await updateProduct(+id, updatedProduct);
+      const res2 = await updateProductCategories(+id, categoryIds);
+      if (res1.error && res2.error) {
+        toast.error("Error updating product details and categories");
+        actions.setValues(initialValues as any);
+        return;
+      }
+      if (res1.error) {
+        toast.error("Error updating product details");
+        actions.setValues({
+          ...(initialValues as any),
+          categories: values.categories,
+        });
+      }
+      if (res2.error) {
+        toast.error("Error updating product categories");
+        actions.setValues({
+          ...values,
+          categories: initialValues?.categories,
+        });
+      }
+      if (res1.success && res2.success) {
+        toast.success("Product Updated Successfully");
+        router.push(`/products`);
+      }
     },
   });
+
+  // throw new Error("Function not implemented.");
 
   useEffect(() => {
     setLoading(true);
     (async function () {
-      const [productArr] = await getProduct(id);
-      const brands = await getAllBrands();
+      const { product: productDetails, error } = await getProduct(+id);
+
+      if (error || productDetails.length === 0) {
+        setError(true);
+        return;
+      }
+
+      const [productArr] = productDetails;
+      const brands = await getBrands();
       const brandsOption = brands.map((brand) => ({
         value: brand.id,
         label: brand.name,
@@ -100,17 +138,17 @@ function EditProduct({ params }: { params: { id: string } }) {
         label: selectedBrands.get(item),
       }));
 
-      const categories = await getAllCategories();
+      const categories = await getCategories();
       const categoriesOption = categories.map((category) => ({
         value: category.id,
         label: category.name,
       }));
-      const initialCategories = await getProductCategories(id);
+      const initialCategories = await getProductCategories(+id);
       const defaultCategories = initialCategories.map((category) => ({
         value: category.id,
         label: category.name,
       }));
-      console.log(defaultCategories);
+
       setCategoriesOption(categoriesOption as any);
 
       const occasionOption = occasionOptions.map((item) => {
@@ -140,9 +178,14 @@ function EditProduct({ params }: { params: { id: string } }) {
         image_url: "",
       };
       setValues(product);
+      setInitialValues(product);
       setLoading(false);
     })();
   }, [id, setValues]);
+
+  if (error) {
+    throw new Error("Product not found");
+  }
 
   function handleChangeSelect(selectedOptions) {
     if (selectedOptions.length === 0) {
@@ -192,12 +235,12 @@ function EditProduct({ params }: { params: { id: string } }) {
     });
   }
 
-  if (loading) return <h2>Loading...</h2>;
-
-  if (isSubmitting) return <h1 className="text-2xl">Submitting...</h1>;
+  if (loading)
+    return <h2 className="text-lg font-bold">Loading product details...</h2>;
 
   return (
     <div className="w-1/3 text-white">
+      {isSubmitting && <p className="text-lg text-yellow-200">Submitting...</p>}
       <h1 className="mb-8 text-xl">Edit details of Product {id}</h1>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div>
@@ -208,8 +251,12 @@ function EditProduct({ params }: { params: { id: string } }) {
             id="name"
             value={product.name}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Enter name"
           />
+          {errors.name && touched.name && (
+            <p className="error">{errors.name}</p>
+          )}
         </div>
         <div>
           <label htmlFor="description">Product description: </label>
@@ -219,10 +266,14 @@ function EditProduct({ params }: { params: { id: string } }) {
             name="description"
             value={product.description}
             onChange={handleChange}
+            onBlur={handleBlur}
             rows={5}
             cols={30}
             placeholder="Enter description"
           />
+          {errors.description && touched.description && (
+            <p className="error">{errors.description}</p>
+          )}
         </div>
         <div>
           <label htmlFor="description" id="price">
@@ -234,8 +285,12 @@ function EditProduct({ params }: { params: { id: string } }) {
             placeholder="Enter old price"
             value={product.old_price}
             onChange={handleChange}
+            onBlur={handleBlur}
             step={0.1}
           />
+          {errors.old_price && touched.old_price && (
+            <p className="error">{errors.old_price}</p>
+          )}
         </div>
         <div>
           <label htmlFor="discount">Product Discount: </label>
@@ -245,11 +300,14 @@ function EditProduct({ params }: { params: { id: string } }) {
             id="discount"
             value={product.discount}
             onChange={handleChange}
+            onBlur={handleBlur}
             step={0.1}
             placeholder="Enter product discount"
           />
+          {errors.discount && touched.discount && (
+            <p className="error">{errors.discount}</p>
+          )}
         </div>
-        <div></div>
         <div>
           <label htmlFor="colors">Product colors: </label>
           <input
@@ -258,8 +316,12 @@ function EditProduct({ params }: { params: { id: string } }) {
             id="colors"
             placeholder="Enter product colors"
             onChange={handleChange}
+            onBlur={handleBlur}
             value={product.colors}
           />
+          {errors.colors && touched.colors && (
+            <p className="error">{errors.colors}</p>
+          )}
         </div>
         <div>
           <label htmlFor="rating">Product Rating: </label>
@@ -271,8 +333,12 @@ function EditProduct({ params }: { params: { id: string } }) {
             min={0}
             max={5}
             value={product.rating}
+            onBlur={handleBlur}
             onChange={handleChange}
-          ></input>
+          />
+          {errors.rating && touched.rating && (
+            <p className="error">{errors.rating}</p>
+          )}
         </div>
         <div>
           <label htmlFor="gender">Product Gender: </label>
@@ -282,6 +348,7 @@ function EditProduct({ params }: { params: { id: string } }) {
             id="gender"
             value={product.gender}
             onChange={handleChange}
+            onBlur={handleBlur}
           >
             {["men", "boy", "women", "girl"].map((gender, i) => {
               return (
@@ -291,6 +358,9 @@ function EditProduct({ params }: { params: { id: string } }) {
               );
             })}
           </select>
+          {errors.gender && touched.gender && (
+            <p className="error">{errors.gender}</p>
+          )}
         </div>
 
         <div>
@@ -301,8 +371,12 @@ function EditProduct({ params }: { params: { id: string } }) {
             isMulti
             name="brands"
             onChange={handleChangeSelect}
+            onBlur={handleBlur}
             value={product.brands}
           />
+          {errors.brands && touched.brands && (
+            <p className="error">{errors.brands}</p>
+          )}
         </div>
 
         <div className=" flex items-center gap-4 mb-4">
@@ -313,8 +387,12 @@ function EditProduct({ params }: { params: { id: string } }) {
             isMulti
             name="categories"
             onChange={handleCategories}
+            onBlur={handleBlur}
             value={product.categories}
           />
+          {errors.categories && touched.categories && (
+            <p className="error">{errors.categories}</p>
+          )}
         </div>
 
         <div className=" flex  items-center gap-4 mb-4">
@@ -325,8 +403,12 @@ function EditProduct({ params }: { params: { id: string } }) {
             isMulti
             name="occasion"
             onChange={handleOccasion}
+            onBlur={handleBlur}
             value={product.occasion}
           />
+          {errors.occasion && touched.occasion && (
+            <p className="error">{errors.occasion}</p>
+          )}
         </div>
 
         <div className=" flex  items-center gap-4 mb-4">

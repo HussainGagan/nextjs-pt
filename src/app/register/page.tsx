@@ -1,40 +1,47 @@
 "use client";
+import { register } from "@/actions/registerAction";
 import { registerSchema } from "@/schemas/register";
 import { useFormik } from "formik";
+import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
-import { act } from "react-dom/test-utils";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 function Register() {
-  const { values, handleSubmit, handleChange, isSubmitting, errors } =
-    useFormik({
-      initialValues: {
-        name: "",
-        email: "",
-        pass: "",
-        address: "",
-        city: "",
-      },
-      validationSchema: registerSchema,
-      onSubmit: async (values, action) => {
-        const res = await fetch("/api/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(values),
-        });
-        const data = await res.json();
-        if (data?.error) {
-          alert(data.error);
-        } else {
-          alert(data.data);
-          action.resetForm();
-        }
-      },
-    });
+  const router = useRouter();
+  const {
+    values,
+    handleSubmit,
+    handleChange,
+    isSubmitting,
+    errors,
+    touched,
+    handleBlur,
+  } = useFormik({
+    initialValues: {
+      name: "",
+      email: "",
+      pass: "",
+      address: "",
+      city: "",
+    },
+    validationSchema: registerSchema,
+    onSubmit: async (values, action) => {
+      const data = await register(values);
+      if (data?.error) {
+        toast.error(data.error);
+      }
+      if (data?.success) {
+        toast.success("User registered successfully");
+        router.replace("/login");
+      }
+    },
+  });
 
   return (
     <div>
+      <h1 className="text-2xl font-bold">Sign Up</h1>
+
       <form className="flex flex-col gap-6 mt-8" onSubmit={handleSubmit}>
         <div className="flex gap-2">
           <label htmlFor="name">Name:</label>
@@ -44,10 +51,14 @@ function Register() {
             type="text"
             name="name"
             placeholder="enter name"
+            onBlur={handleBlur}
             value={values.name}
             onChange={handleChange}
             required
           />
+          {errors.name && touched.name && (
+            <p className="error">{errors.name}</p>
+          )}
         </div>
         <div className="flex gap-2">
           <label htmlFor="email">Email:</label>
@@ -56,10 +67,14 @@ function Register() {
             type="email"
             name="email"
             placeholder="enter email"
+            onBlur={handleBlur}
             value={values.email}
             onChange={handleChange}
             required
           />
+          {errors.email && touched.email && (
+            <p className="error">{errors.email}</p>
+          )}
         </div>
         <div className="flex gap-2">
           <label htmlFor="pass">Password:</label>
@@ -68,10 +83,14 @@ function Register() {
             type="password"
             name="pass"
             placeholder="enter password"
+            onBlur={handleBlur}
             value={values.pass}
             onChange={handleChange}
             required
           />
+          {errors.pass && touched.pass && (
+            <p className="error">{errors.pass}</p>
+          )}
         </div>
         <div className="flex gap-2">
           <label htmlFor="address">Address:</label>
@@ -108,7 +127,7 @@ function Register() {
 
       <p className="flex gap-2 mt-4">
         Already have an account?
-        <Link href="/api/auth/signin">SignIn</Link>
+        <Link href="/login">Sign In</Link>
       </p>
     </div>
   );

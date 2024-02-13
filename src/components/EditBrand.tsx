@@ -1,26 +1,25 @@
 "use client";
-
-import { deleteCategory, editCategory } from "@/actions/categoryActions";
 import { editBrand } from "@/actions/brandActions";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "react-toastify";
 
 function EditBrand({ brand }) {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
 
   async function handleEdit(formData: FormData) {
-    try {
-      const name = formData.get("name");
-      const website = formData.get("website");
-      await editBrand(brand.id, { name, website });
-      alert(`Brand Id: ${brand.id} Edited`);
-      setIsOpen(false);
-
-      router.refresh();
-    } catch (err) {
-      alert(err.message);
+    const name = formData.get("name") as string;
+    if (!name) {
+      toast.error("brand name is required");
+      return;
     }
+    const website = formData.get("website") as string;
+    const { error } = await editBrand(brand.id, { name, website });
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success(`Brand Id: ${brand.id} Edited`);
+    setIsOpen(false);
   }
 
   return (

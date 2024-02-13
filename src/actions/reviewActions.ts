@@ -1,6 +1,11 @@
+//@ts-nocheck
 "use server";
 
+import { InsertReviews, UpdateReviews } from "@/types";
 import { db } from "../../db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/utils/authOptions";
+import { revalidatePath } from "next/cache";
 
 export async function getReviewsForProduct(
   productId: number,
@@ -35,35 +40,85 @@ export async function getReviewsForProduct(
   }
 }
 
-export async function postReview(data) {
+export async function postReview(data: InsertReviews, productId: number) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to post a review" };
+    }
+
+    if (!session?.user?.isVerified) {
+      return { error: "You must be verified before posting a review" };
+    }
+
+    if (!data.user_id || !data.message || !data.product_id || !data.rating) {
+      return { error: "All fields are required" };
+    }
+
     const result = await db.insertInto("reviews").values(data).execute();
+
+    revalidatePath(`/products/${productId}`);
+
     return { message: "success" };
-  } catch (err) {
-    throw err;
+  } catch (err: any) {
+    return { error: err.message };
   }
 }
 
-export async function editReview(reviewId, data) {
+export async function editReview(
+  reviewId: number,
+  data: UpdateReviews,
+  productId: number
+) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to edit a review" };
+    }
+    if (!session?.user?.isVerified) {
+      return { error: "You must be verified before editing a review" };
+    }
+
+    if (!data.message || !data.rating) {
+      return { error: "All fields are required" };
+    }
+
     const result = await db
       .updateTable("reviews")
       .set(data)
       .where("reviews.id", "=", reviewId)
       .executeTakeFirst();
+
+    revalidatePath(`/products/${productId}`);
+
     return { message: "success" };
-  } catch (err) {
-    throw err;
+  } catch (err: any) {
+    return { error: err.message };
   }
 }
-export async function deleteReview(reviewId) {
+export async function deleteReview(reviewId: number, productId: number) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to edit a review" };
+    }
+
+    if (!session?.user?.isVerified) {
+      return { error: "You must be verified before deleting a review" };
+    }
+
     const result = await db
       .deleteFrom("reviews")
       .where("reviews.id", "=", reviewId)
       .executeTakeFirst();
+
+    revalidatePath(`/products/${productId}`);
+
     return { message: "success" };
-  } catch (err) {
-    throw err;
+  } catch (err: any) {
+    return { error: err.message };
   }
 }

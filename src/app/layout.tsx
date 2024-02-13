@@ -4,7 +4,8 @@ import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
 import { getServerSession } from "next-auth";
 import NavMenu from "@/components/NavMenu";
-import seedDatabase from "@/utils/seedDatabase";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,6 +30,12 @@ export default async function RootLayout({
             {children}
           </main>
         </SessionProvider>
+        <ToastContainer
+          position="top-center"
+          theme="dark"
+          closeOnClick
+          pauseOnHover={false}
+        />
       </body>
     </html>
   );

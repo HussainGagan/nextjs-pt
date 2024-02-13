@@ -7,10 +7,9 @@ function Empty() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl mb-4">Sorry, there are no products available</h1>
-      <button className="bg-white p-4 text-black" onClick={() => router.back()}>
-        Go Back
-      </button>
+      <h1 className="text-xl mb-4 text-red-400">
+        Sorry, there are no products available for the following filter
+      </h1>
     </div>
   );
 }

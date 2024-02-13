@@ -3,17 +3,22 @@
 import { sql } from "kysely";
 import { DEFAULT_PAGE_SIZE } from "../../constant";
 import { db } from "../../db";
+import { InsertProducts, UpdateProducts } from "@/types";
+import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/utils/authOptions";
+import { cache } from "react";
 
 export async function getProducts(
   pageNo = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   sortBy = "",
-  categoryId,
-  priceRangeTo,
-  gender,
-  occasions,
-  discount,
-  brandId
+  categoryId: string,
+  priceRangeTo: string,
+  gender: string,
+  occasions: string,
+  discount: string,
+  brandId: string
 ) {
   try {
     let products;
@@ -21,13 +26,15 @@ export async function getProducts(
 
     if (sortBy) {
       const [queryName, queryVal] = sortBy.split("-");
-      dbQuery = dbQuery.orderBy(`${queryName} ${queryVal}`);
+      dbQuery = dbQuery.orderBy(`${queryName} ${queryVal}` as any);
     }
 
     if (brandId) {
-      // console.log(brandId);
-      // products = dbQuery.where("products.brands", "in", brandId.split(","));
-      // products = dbQuery.where(sql`FIND_IN_SET(${brandId}, products.brands)`);
+      const brandIdsToSearch = brandId.split(",").map(Number);
+      // console.log(`"[${brandIdsToSearch}]"`);
+      dbQuery = dbQuery.where(
+        sql`JSON_OVERLAPS(products.brands, "[${brandIdsToSearch}]")`
+      );
     }
 
     if (categoryId) {
@@ -47,9 +54,6 @@ export async function getProducts(
     if (gender) {
       dbQuery = dbQuery.where("products.gender", "=", gender);
     }
-    if (occasions) {
-      dbQuery = dbQuery.where("products.occasion", "in", occasions.split(","));
-    }
 
     if (discount) {
       const [from, to] = discount.split("-");
@@ -58,9 +62,24 @@ export async function getProducts(
         .where("products.discount", "<=", to);
     }
 
-    const result = await dbQuery
+    if (occasions) {
+      const arrOccasions = occasions.split(",");
+      if (arrOccasions.length > 0) {
+        let condition = sql`(`; // Start group
+        arrOccasions.forEach((occasion, index) => {
+          if (index > 0) condition = sql`${condition} OR `;
+          condition = sql`${condition}FIND_IN_SET(${occasion}, products.occasion)`;
+        });
+        condition = sql`${condition})`; // Close group
+        dbQuery = dbQuery.where(condition);
+      }
+    }
+
+    const { count } = await dbQuery
       .select(sql`COUNT(DISTINCT products.id) as count`)
       .executeTakeFirst();
+
+    const lastPage = Math.ceil(count / pageSize);
 
     products = await dbQuery
       .distinct()
@@ -68,13 +87,16 @@ export async function getProducts(
       .limit(pageSize)
       .execute();
 
-    return { products, count: result.count };
+    const numOfResultsOnCurPage = products.length;
+
+    return { products, count, lastPage, numOfResultsOnCurPage };
   } catch (error) {
     throw error;
   }
 }
-export async function getProduct(productId) {
-  "use server";
+
+export const getProduct = cache(async function getProduct(productId: number) {
+  // console.log("run");
   try {
     const product = await db
       .selectFrom("products")
@@ -82,11 +104,11 @@ export async function getProduct(productId) {
       .where("id", "=", productId)
       .execute();
 
-    return product;
+    return { product };
   } catch (error) {
-    throw error;
+    return { error: "Could not find the product" };
   }
-}
+});
 
 async function enableForeignKeyChecks() {
   await sql`SET foreign_key_checks = 1`.execute(db);
@@ -96,8 +118,14 @@ async function disableForeignKeyChecks() {
   await sql`SET foreign_key_checks = 0`.execute(db);
 }
 
-export async function deleteProduct(productId) {
+export async function deleteProduct(productId: number) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to delete a product" };
+    }
+
     await disableForeignKeyChecks();
     await db
       .deleteFrom("product_categories")
@@ -116,9 +144,10 @@ export async function deleteProduct(productId) {
     await db.deleteFrom("products").where("id", "=", productId).execute();
 
     await enableForeignKeyChecks();
+    revalidatePath("/products");
     return { message: "success" };
   } catch (error) {
-    throw error;
+    return { error: "Something went wrong, Cannot delete the product" };
   }
 }
 
@@ -132,7 +161,7 @@ export async function MapBrandIdsToName(brandsId) {
         .select("name")
         .where("id", "=", +brandId)
         .executeTakeFirst();
-      brandsMap.set(brandId, brand.name);
+      brandsMap.set(brandId, brand?.name);
     }
     return brandsMap;
   } catch (error) {
@@ -140,7 +169,7 @@ export async function MapBrandIdsToName(brandsId) {
   }
 }
 
-export async function getAllProductCategories(products) {
+export async function getAllProductCategories(products: any) {
   try {
     const productsId = products.map((product) => product.id);
     const categoriesMap = new Map();
@@ -164,7 +193,8 @@ export async function getAllProductCategories(products) {
     throw error;
   }
 }
-export async function getProductCategories(productId) {
+
+export async function getProductCategories(productId: number) {
   try {
     const categories = await db
       .selectFrom("product_categories")
@@ -183,8 +213,17 @@ export async function getProductCategories(productId) {
   }
 }
 
-export async function updateProductCategories(productId, categoryIds) {
+export async function updateProductCategories(
+  productId: number,
+  categoryIds: any
+) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to update a product" };
+    }
+
     const values = categoryIds.map((categoryId) => ({
       category_id: categoryId,
       product_id: productId,
@@ -197,76 +236,181 @@ export async function updateProductCategories(productId, categoryIds) {
 
     await db.insertInto("product_categories").values(values).execute();
 
-    return { message: "success" };
-  } catch (error) {
-    throw error;
+    revalidatePath(`/products`);
+    return { message: "success", success: true };
+  } catch (error: any) {
+    return { error: error.message };
   }
 }
 
-export async function getDistinctOccasion() {
-  try {
-    const occasion = await db
-      .selectFrom("products")
-      .select("occasion")
-      .distinct()
-      .execute();
-    return occasion.map((val) => val.occasion);
-  } catch (err) {
-    throw err;
-  }
-}
-
-export async function updateProduct(productId: number, value: {}) {
-  const oldPrice = parseFloat(value.old_price);
-  const discount = parseFloat(value.discount);
-  const newPrice = oldPrice - (discount / 100) * oldPrice;
+export async function updateProduct(productId: number, value: UpdateProducts) {
   value = {
     ...value,
-    price: newPrice.toFixed(2).toString(),
+    price: "0",
   };
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to update a product" };
+    }
+
     const result = await db
       .updateTable("products")
       .set(value)
       .where("id", "=", productId)
       .executeTakeFirst();
-    return { message: "success" };
-  } catch (err) {
-    throw err;
+    return { message: "success", success: true };
+  } catch (err: any) {
+    return { error: err.message };
   }
 }
 
-export async function addProduct(value: {}) {
-  const oldPrice = parseFloat(value.old_price);
-  const discount = parseFloat(value.discount);
-  const newPrice = oldPrice - (discount / 100) * oldPrice;
+export async function addProduct(value: InsertProducts) {
   value = {
     ...value,
-    price: newPrice.toFixed(2).toString(),
+    price: "0",
   };
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to add a product" };
+    }
     const result = await db
       .insertInto("products")
-      .values(value as any)
+      .values(value)
       .executeTakeFirst();
 
-    return Number(result.insertId);
-  } catch (err) {
-    throw err;
+    return {
+      productId: Number(result.insertId),
+      message: "product inserted",
+      success: true,
+    };
+  } catch (err: any) {
+    return { error: err.message };
   }
 }
-export async function addProductIntoCategories(productId, categoryIds) {
+
+export async function addProductIntoCategories(
+  productId: number,
+  categoryIds: any
+) {
   const value = categoryIds.map((id) => ({
     category_id: id,
     product_id: productId,
   }));
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to add a product" };
+    }
+
     const result = await db
       .insertInto("product_categories")
       .values(value as any)
       .executeTakeFirst();
-    return { message: "success" };
-  } catch (err) {
-    throw err;
+
+    revalidatePath("/products");
+    return { message: "product inserted into categories", success: true };
+  } catch (err: any) {
+    return { error: err.message };
   }
 }
+
+/*
+export async function getProducts(
+  pageNo = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  sortBy = "",
+  categoryId: string,
+  priceRangeTo: string,
+  gender: string,
+  occasions: string,
+  discount: string,
+  brandId: string
+) {
+  try {
+    let whereClauses = "";
+    let orderByClause = "";
+    let joinClause = "";
+
+    // Sort By
+    if (sortBy) {
+      const [queryName, queryVal] = sortBy.split("-");
+      orderByClause = `ORDER BY ${queryName} ${queryVal}`;
+    }
+
+    // Brand ID
+    if (brandId) {
+      const brandIdsToSearch = brandId.split(",").map(Number).join(",");
+      whereClauses += ` AND JSON_OVERLAPS(products.brands, '[${brandIdsToSearch}]')`;
+    }
+
+    // Category ID
+    if (categoryId) {
+      joinClause = `INNER JOIN product_categories ON product_categories.product_id = products.id`;
+      const categoryIds = categoryId.split(",").join(",");
+      whereClauses += ` AND product_categories.category_id IN (${categoryIds})`;
+    }
+
+    // Price Range
+    if (priceRangeTo) {
+      whereClauses += ` AND products.price <= ${priceRangeTo}`;
+    }
+
+    // Gender
+    if (gender) {
+      whereClauses += ` AND products.gender = '${gender}'`;
+    }
+
+    // Discount
+    if (discount) {
+      const [from, to] = discount.split("-");
+      whereClauses += ` AND products.discount >= ${from} AND products.discount <= ${to}`;
+    }
+
+    // Occasions
+    let occasionCondition = "";
+    if (occasions) {
+      const arrOccasions = occasions.split(",");
+      arrOccasions.forEach((occasion, index) => {
+        if (index > 0) occasionCondition += " OR ";
+        occasionCondition += `FIND_IN_SET('${occasion}', products.occasion)`;
+      });
+      if (occasionCondition) {
+        whereClauses += ` AND (${occasionCondition})`;
+      }
+    }
+
+    const query = sql`
+      SELECT DISTINCT products.* FROM products
+      ${joinClause ? sql([joinClause]) : sql``}
+      WHERE 1=1
+      ${sql([whereClauses])}
+      ${orderByClause ? sql([orderByClause]) : sql``}
+      LIMIT ${pageSize} OFFSET ${(pageNo - 1) * pageSize}
+    `;
+
+    const { rows } = await query.execute(db);
+
+    const countQuery = sql`
+      SELECT COUNT(DISTINCT products.id) as count FROM products
+      ${joinClause ? sql([joinClause]) : sql``}
+      WHERE 1=1
+      ${sql([whereClauses])}
+    `;
+
+    const countResult = await countQuery.execute(db);
+    const count = countResult?.count || 0;
+    const lastPage = Math.ceil(count / pageSize);
+
+    console.log({ rows, count, lastPage });
+
+    return { rows, count, lastPage };
+  } catch (error) {
+    throw error;
+  }
+}
+*/

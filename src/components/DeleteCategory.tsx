@@ -1,15 +1,18 @@
 "use client";
 
 import { deleteCategory } from "@/actions/categoryActions";
-import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 function DeleteCategory({ category_id }) {
-  const router = useRouter();
-
   async function handleClick() {
-    await deleteCategory(category_id);
-    alert(`Category Id: ${category_id} deleted`);
-    router.refresh();
+    if (confirm("Are you sure you want to delete this category?")) {
+      const { error } = await deleteCategory(category_id);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      toast.success(`Category Id: ${category_id} deleted`);
+    }
   }
 
   return (

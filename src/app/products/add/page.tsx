@@ -1,14 +1,19 @@
 "use client";
-import { basicSchema } from "@/schemas";
-import { addCategory } from "@/actions/actions";
-import { getAllCategories } from "@/actions/categoryActions";
-import { getAllBrands } from "@/actions/brandActions";
-import { addProduct, addProductIntoCategories } from "@/actions/productActions";
+import { basicSchema } from "@/schemas/product";
+import { getCategories } from "@/actions/categoryActions";
+import { getBrands } from "@/actions/brandActions";
+import {
+  addProduct,
+  addProductIntoCategories,
+  deleteProduct,
+} from "@/actions/productActions";
 import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { occasionOptions } from "../../../../constant";
 import Select from "react-select";
+import { InsertProducts } from "@/types";
+import { toast } from "react-toastify";
 
 function AddProduct() {
   const [brandsOption, setBrandsOption] = useState([]);
@@ -52,39 +57,49 @@ function AddProduct() {
         .join(",");
 
       const categoryIds = values.categories.map((category) => category.value);
-      const newProduct = {
+      const newProduct: InsertProducts = {
         name: values.name,
         description: values.description,
         old_price: Number(values.old_price).toFixed(2).toString(),
         discount: Number(values.discount).toFixed(2).toString(),
         colors: values.colors,
         brands: brandIds,
-        gender: values.gender,
+        gender: values.gender as "boy" | "girl" | "men" | "women",
         occasion: occasion,
         rating: Number(values.rating).toFixed(1).toString(),
         image_url: values.image_url,
       };
 
-      console.log(newProduct);
       await new Promise((res) => setTimeout(res, 1000));
-      const productId = await addProduct(newProduct);
-      await addProductIntoCategories(productId, categoryIds);
-      resetForm();
+      const { productId, error: error1 } = await addProduct(newProduct);
+      if (error1) {
+        toast.error("Error adding product, try again");
+        return;
+      }
+      const { error: error2 } = await addProductIntoCategories(
+        productId as number,
+        categoryIds
+      );
+      if (error2) {
+        toast.error("Error adding product, try again");
+        deleteProduct(productId as number);
+        return;
+      }
+      toast.success("Product added successfully");
       router.push(`/products`);
-      console.log("submitted");
     },
   });
 
   useEffect(() => {
     setLoading(true);
     (async function () {
-      const brands = await getAllBrands();
+      const brands = await getBrands();
       const brandsOption = brands.map((brand) => ({
         value: brand.id,
         label: brand.name,
       }));
 
-      const categories = await getAllCategories();
+      const categories = await getCategories();
       const categoriesOption = categories.map((category) => ({
         value: category.id,
         label: category.name,
@@ -151,12 +166,21 @@ function AddProduct() {
     });
   }
 
+  function handleColorPicker(e) {
+    setValues({
+      ...product,
+      colors: product.colors
+        ? `${product.colors},${e.target.value}`
+        : e.target.value,
+    });
+  }
+
   if (loading) return <h2 className="text-lg">Loading...</h2>;
-  if (isSubmitting) return <h1 className="text-2xl">Submitting...</h1>;
 
   return (
     <div className="w-1/3 text-white">
       <h1 className="mb-8 text-xl">Add Product details</h1>
+      {isSubmitting && <p className="text-lg text-yellow-200">Submitting...</p>}
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div>
           <label htmlFor="name">Product Name: </label>
@@ -166,8 +190,13 @@ function AddProduct() {
             id="name"
             value={product.name}
             onChange={handleChange}
+            onBlur={handleBlur}
+            disabled={isSubmitting}
             placeholder="Enter name"
           />
+          {errors.name && touched.name && (
+            <p className="error">{errors.name}</p>
+          )}
         </div>
         <div>
           <label htmlFor="description">Product description: </label>
@@ -177,10 +206,15 @@ function AddProduct() {
             name="description"
             value={product.description}
             onChange={handleChange}
+            onBlur={handleBlur}
             rows={5}
             cols={30}
+            disabled={isSubmitting}
             placeholder="Enter description"
           />
+          {errors.description && touched.description && (
+            <p className="error">{errors.description}</p>
+          )}
         </div>
         <div>
           <label htmlFor="description" id="price">
@@ -192,8 +226,13 @@ function AddProduct() {
             placeholder="Enter old price"
             value={product.old_price}
             onChange={handleChange}
+            onBlur={handleBlur}
+            disabled={isSubmitting}
             step={0.1}
           />
+          {errors.old_price && touched.old_price && (
+            <p className="error">{errors.old_price}</p>
+          )}
         </div>
         <div>
           <label htmlFor="discount">Product Discount: </label>
@@ -203,21 +242,34 @@ function AddProduct() {
             id="discount"
             value={product.discount}
             onChange={handleChange}
+            onBlur={handleBlur}
+            disabled={isSubmitting}
             step={0.1}
             placeholder="Enter product discount"
           />
+          {errors.discount && touched.discount && (
+            <p className="error">{errors.discount}</p>
+          )}
         </div>
         <div></div>
         <div>
-          <label htmlFor="colors">Product colors: </label>
-          <input
-            type="text"
-            name="colors"
-            id="colors"
-            placeholder="Enter product colors"
-            onChange={handleChange}
-            value={product.colors}
-          />
+          <div className="flex gap-4">
+            <label htmlFor="colors">Product colors: </label>
+            <input
+              type="text"
+              name="colors"
+              id="colors"
+              placeholder="Enter product colors"
+              onChange={handleChange}
+              disabled={isSubmitting}
+              onBlur={handleBlur}
+              value={product.colors}
+            />
+            <input type="color" id="colors" onBlur={handleColorPicker} />
+          </div>
+          {errors.colors && touched.colors && (
+            <p className="error">{errors.colors}</p>
+          )}
         </div>
         <div>
           <label htmlFor="rating">Product Rating: </label>
@@ -229,8 +281,13 @@ function AddProduct() {
             min={0}
             max={5}
             value={product.rating}
+            disabled={isSubmitting}
+            onBlur={handleBlur}
             onChange={handleChange}
           ></input>
+          {errors.rating && touched.rating && (
+            <p className="error">{errors.rating}</p>
+          )}
         </div>
         <div>
           <label htmlFor="gender">Product Gender: </label>
@@ -239,6 +296,8 @@ function AddProduct() {
             name="gender"
             id="gender"
             value={product.gender}
+            disabled={isSubmitting}
+            onBlur={handleBlur}
             onChange={handleChange}
           >
             {["men", "boy", "women", "girl"].map((gender, i) => {
@@ -249,6 +308,9 @@ function AddProduct() {
               );
             })}
           </select>
+          {errors.gender && touched.gender && (
+            <p className="error">{errors.gender}</p>
+          )}
         </div>
 
         <div>
@@ -259,8 +321,13 @@ function AddProduct() {
             isMulti
             name="brands"
             onChange={handleChangeSelect}
+            onBlur={handleBlur}
             value={product.brands}
+            isDisabled={isSubmitting}
           />
+          {errors.brands && touched.brands && (
+            <p className="error">{String(errors.brands)}</p>
+          )}
         </div>
 
         <div className=" flex  items-center gap-4 mb-4">
@@ -271,8 +338,13 @@ function AddProduct() {
             isMulti
             name="occasion"
             onChange={handleOccasion}
+            onBlur={handleBlur}
+            isDisabled={isSubmitting}
             value={product.occasion}
           />
+          {errors.occasion && touched.occasion && (
+            <p className="error">{String(errors.occasion)}</p>
+          )}
         </div>
         <div className=" flex items-center gap-4 mb-4">
           <span>Choose Categories</span>
@@ -282,8 +354,13 @@ function AddProduct() {
             isMulti
             name="categories"
             onChange={handleCategories}
+            onBlur={handleBlur}
+            isDisabled={isSubmitting}
             value={product.categories}
           />
+          {errors.categories && touched.categories && (
+            <p className="error">{String(errors.categories)}</p>
+          )}
         </div>
         <div className=" flex  items-center gap-4 mb-4">
           <label htmlFor="image_url">Upload an image</label>
@@ -293,6 +370,8 @@ function AddProduct() {
             name="image_url"
             id="image_url"
             onChange={handleFileInput}
+            onBlur={handleBlur}
+            disabled={isSubmitting}
             accept="image/*"
           />
         </div>

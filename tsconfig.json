@@ -2,8 +2,7 @@
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
+    // "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -21,7 +20,13 @@
       "@/*": ["./src/*"]
     },
     "target": "es2015",
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "strict": false, // Disables strict type-checking options
+    "noImplicitAny": false, // Allows expressions and declarations with an implied 'any' type
+    "noImplicitReturns": false, // Do not error when not all code paths in function return a value
+    "noImplicitThis": false, // Allow 'this' expressions with an implied 'any' type
+    "noEmitOnError": false, // Do not emit outputs if any errors were reported.
+    "skipLibCheck": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

@@ -1,16 +1,20 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { DEFAULT_PAGE_SIZE } from "../../constant";
 
-function PaginationSection({ count }: { count: number }) {
+function PaginationSection({
+  lastPage,
+  pageNo,
+  pageSize,
+}: {
+  lastPage: number;
+  pageNo: number;
+  pageSize: number;
+}) {
   const router = useRouter();
 
   const query = useSearchParams();
   const searchParams = new URLSearchParams(query);
-  const pageNo = Number(searchParams.get("page")) || 1;
-  const pageSize = Number(searchParams.get("pageSize")) || DEFAULT_PAGE_SIZE;
-  const lastPage = Math.ceil(count / pageSize);
 
   function handlePrev() {
     if (pageNo > 1) {
@@ -37,7 +41,7 @@ function PaginationSection({ count }: { count: number }) {
         name="page-size"
         className="text-black"
         onChange={(e) => {
-          searchParams.set("page", 1);
+          searchParams.set("page", "1");
           searchParams.set("pageSize", e.target.value);
           router.push(`/products?${searchParams.toString()}`, {
             scroll: false,

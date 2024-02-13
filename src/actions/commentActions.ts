@@ -1,5 +1,10 @@
+//@ts-nocheck
 "use server";
+import { InsertComments, UpdateComments } from "@/types";
 import { db } from "../../db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/utils/authOptions";
+import { revalidatePath } from "next/cache";
 
 export async function getCommentsForProduct(productId: number) {
   try {
@@ -25,47 +30,96 @@ export async function getCommentsForProduct(productId: number) {
   }
 }
 
-export async function postComment(data) {
+export async function postComment(data: InsertComments, productId: number) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to update a product" };
+    }
+
+    if (!session?.user?.isVerified) {
+      return { error: "You must be verified before posting a comment" };
+    }
+
     const result = await db.insertInto("comments").values(data).execute();
+
+    revalidatePath(`/products/${productId}`);
     return { message: "success" };
-  } catch (err) {
-    throw err;
+  } catch (err: any) {
+    return { error: err.message };
   }
 }
 
-export async function editComment(comment_id, data) {
+export async function editComment(
+  comment_id: number,
+  data: UpdateComments,
+  productId: number
+) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return { error: "You must be logged in to update a product" };
+    }
+
+    if (!session?.user?.isVerified) {
+      return { error: "You must be verified before editing a comment" };
+    }
+
     const result = await db
       .updateTable("comments")
       .set(data)
       .where("comments.id", "=", comment_id)
       .executeTakeFirst();
+
+    revalidatePath(`/products/${productId}`);
+
     return { message: "success" };
-  } catch (err) {
-    throw err;
+  } catch (err: any) {
+    return { error: err.message };
   }
 }
 
-export async function deleteCommentAndReplies(commentId: number) {
-  // This function deletes a comment and all its nested replies
-  async function deleteReplies(parentId: number) {
-    const replies = await db
-      .selectFrom("comments")
-      .select("id")
-      .where("parent_comment_id", "=", parentId)
-      .execute();
+export async function deleteCommentAndReplies(
+  commentId: number,
+  productId: number
+) {
+  try {
+    const session = await getServerSession(authOptions);
 
-    // Delete each reply and its nested replies
-    for (const reply of replies) {
-      await deleteReplies(reply.id); // Recursive call to delete any nested replies
-      await db.deleteFrom("comments").where("id", "=", reply.id).execute();
+    if (!session) {
+      return { error: "You must be logged in to update a product" };
     }
+
+    if (!session?.user?.isVerified) {
+      return { error: "You must be verified before deleting a comment" };
+    }
+
+    // This function deletes a comment and all its nested replies
+    async function deleteReplies(parentId: number) {
+      const replies = await db
+        .selectFrom("comments")
+        .select("id")
+        .where("parent_comment_id", "=", parentId)
+        .execute();
+
+      // Delete each reply and its nested replies
+      for (const reply of replies) {
+        await deleteReplies(reply.id); // Recursive call to delete any nested replies
+        await db.deleteFrom("comments").where("id", "=", reply.id).execute();
+      }
+    }
+
+    // First delete all nested replies
+    await deleteReplies(commentId);
+
+    // Then delete the comment itself
+    await db.deleteFrom("comments").where("id", "=", commentId).execute();
+
+    revalidatePath(`/products/${productId}`);
+    return { message: "success" };
+  } catch (err: any) {
+    return { error: err.message };
   }
-
-  // First delete all nested replies
-  await deleteReplies(commentId);
-
-  // Then delete the comment itself
-  await db.deleteFrom("comments").where("id", "=", commentId).execute();
 }

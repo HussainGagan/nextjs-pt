@@ -1,12 +1,7 @@
 "use client";
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
-import seedDatabase from "@/utils/seedDatabase";
-
-const ACTIVE_ROUTE = "py-1 px-2 text-gray-300 bg-gray-700";
-const INACTIVE_ROUTE =
-  "py-1 px-2 text-gray-500 hover:text-gray-300 hover:bg-gray-700";
+import seedDatabase from "@/utils/seeding/seedDatabase";
 
 function AuthButton() {
   const { data: session } = useSession();
@@ -24,13 +19,13 @@ function AuthButton() {
   return (
     <>
       Not signed in <br />
-      <button onClick={() => signIn()}>Sign in</button>
+      <Link href={"/login"}>Sign in</Link>
+      {/* <button onClick={() => signIn()}>Sign in</button> */}
     </>
   );
 }
 
 export default function NavMenu() {
-  const pathname = usePathname();
   return (
     <div className="flex gap-8">
       <AuthButton />
@@ -38,6 +33,7 @@ export default function NavMenu() {
       <Link href={"/products/add"}>Add Product</Link>
       <Link href={"/categories"}>Categories</Link>
       <Link href={"/brands"}>Brands</Link>
+      <Link href={"/register"}>Register</Link>
       {/* <button
         className="ml-auto"
         onClick={async () => {

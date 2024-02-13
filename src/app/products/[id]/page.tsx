@@ -1,11 +1,11 @@
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+//@ts-nocheck
+import { authOptions } from "@/utils/authOptions";
 import AddComment from "@/components/AddComment";
 import AddReview from "@/components/AddReview";
 import CommentOperations from "@/components/CommentOperations";
 import LoadMore from "@/components/LoadMore";
 import ReviewOperations from "@/components/ReviewOperations";
 import StarRating from "@/components/StarRating";
-import ToggleButton from "@/components/ToggleButton";
 import { convertToNestedComments, parseDate } from "@/utils";
 import {
   MapBrandIdsToName,
@@ -16,7 +16,18 @@ import { getCommentsForProduct } from "@/actions/commentActions";
 import { getReviewsForProduct } from "@/actions/reviewActions";
 import { getServerSession } from "next-auth";
 import Image from "next/image";
-import React, { useCallback } from "react";
+import { notFound } from "next/navigation";
+
+export async function generateMetadata({ params }: { params: string }) {
+  const { id } = params;
+  const { product: productArr, error } = await getProduct(+id);
+  const product = productArr[0];
+
+  return {
+    title: product.name,
+    description: product.description,
+  };
+}
 
 async function Product({
   params,
@@ -26,8 +37,19 @@ async function Product({
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
   const { id } = params;
-  const productArr = await getProduct(id);
+
+  if (!Number(id)) {
+    notFound();
+  }
+
+  const { product: productArr, error } = await getProduct(+id);
+
+  if (error || productArr.length === 0) {
+    notFound();
+  }
+
   const session = await getServerSession(authOptions);
+
   const product = productArr[0];
   const brandsMap = await MapBrandIdsToName([
     ...new Set(JSON.parse(product.brands)),
@@ -40,8 +62,6 @@ async function Product({
   const comments = await getCommentsForProduct(+id);
 
   const modifiedComments = convertToNestedComments(comments);
-
-  // console.log(modifiedComments);
 
   function renderComments(comments, depth) {
     return comments.map((comment, i) => {
@@ -69,10 +89,11 @@ async function Product({
                   <CommentOperations
                     comment_id={comment.id}
                     comment={comment.comment}
+                    product_id={id}
                   />
                 )}
               </div>
-              {session && (
+              {session?.user?.isVerified && (
                 <AddComment
                   text="Reply"
                   product_id={id}
@@ -81,7 +102,9 @@ async function Product({
               )}
             </div>
           </div>
-          {renderComments(comment.subComments, depth + 1)}
+          {comment.subComments.length > 0
+            ? renderComments(comment.subComments, depth + 1)
+            : null}
         </div>
       );
     });
@@ -127,114 +150,75 @@ async function Product({
           <h1 className="text-lg font-bold">Reviews</h1>
           {!session ? (
             <p>you need to signin before posting any review</p>
-          ) : (
+          ) : session.user?.isVerified ? (
             <AddReview product_id={id} />
+          ) : (
+            <p>
+              You need to verify your email before posting any reviews, check
+              your email.
+            </p>
           )}
-          {reviews.map((review, i) => {
-            return (
-              <div
-                key={i}
-                className="flex flex-col gap-2 bg-white p-4 text-black rounded-md"
-              >
-                <p>{review.message}</p>
-                <div className="flex gap-4 items-center justify-between">
-                  <span>
-                    {+session?.user?.id === review.user_id
-                      ? "You: " + review.name
-                      : review.name}
-                  </span>
-                  <span>
-                    <StarRating
-                      isPresentational={true}
-                      defaultRating={+review.rating}
-                      userRating={+review.rating}
-                      onSetRating={undefined}
-                      size={24}
-                    />
-                  </span>
-                </div>
-                {+session?.user?.id === review.user_id && (
-                  <div className="">
-                    <ReviewOperations
-                      user_id={review.user_id}
-                      review_id={review.review_id}
-                      message={review.message}
-                      initialRating={review.rating}
-                    />
+          {reviews.length > 0 ? (
+            reviews.map((review, i) => {
+              return (
+                <div
+                  key={i}
+                  className="flex flex-col gap-2 bg-white p-4 text-black rounded-md"
+                >
+                  <p>{review.message}</p>
+                  <div className="flex gap-4 items-center justify-between">
+                    <span>
+                      {+session?.user?.id === review.user_id
+                        ? "You: " + review.name
+                        : review.name}
+                    </span>
+                    <span>
+                      <StarRating
+                        isPresentational={true}
+                        defaultRating={+review.rating}
+                        userRating={+review.rating}
+                        onSetRating={undefined}
+                        size={24}
+                      />
+                    </span>
                   </div>
-                )}
-              </div>
-            );
-          })}
-          <LoadMore id={id} />
+                  {+session?.user?.id === review.user_id && (
+                    <div>
+                      <ReviewOperations
+                        user_id={review.user_id}
+                        review_id={review.review_id}
+                        message={review.message}
+                        initialRating={review.rating}
+                        product_id={id}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <p>There are no reviews on this product.</p>
+          )}
+          {reviews.length > 0 && <LoadMore id={id} />}
         </div>
         <div className="w-[80%] flex flex-col gap-4 mt-4">
           <h1 className="text-2xl font-bold">Comments</h1>
           {!session ? (
             <p>you need to signin before posting any comments</p>
-          ) : (
+          ) : session.user?.isVerified ? (
             <AddComment product_id={id} />
+          ) : (
+            <p>
+              You need to verify your email before posting any comments, check
+              your email.
+            </p>
           )}
           <div>
-            {renderComments(modifiedComments, 0)}
-            {/* {modifiedComments.map((primaryComment, i) => {
-              return (
-                <div key={i}>
-                  <div className="flex flex-col gap-1 bg-white p-4 text-black rounded-md mb-4">
-                    <p>
-                      {+session?.user?.id === primaryComment.user_id
-                        ? "You: " + primaryComment.name
-                        : primaryComment.name}
-                    </p>
-                    <p>{primaryComment.comment}</p>
-                    <p>Modified on: {parseDate(primaryComment.updated_at)}</p>
-                    <div className="">
-                      {+session?.user?.id === primaryComment.user_id && (
-                        <CommentOperations
-                          comment_id={primaryComment.id}
-                          comment={primaryComment.comment}
-                        />
-                      )}
-                    </div>
-                    {session && (
-                      <AddComment
-                        text="Reply"
-                        product_id={id}
-                        parent_comment_id={primaryComment.id}
-                      />
-                    )}
-                  </div> */}
-
-            {/* <ToggleButton
-                    text="See Replies"
-                    hidden={primaryComment.subComments.length === 0}
-                  > */}
-            {/* {primaryComment.subComments.map((subComment, j) => {
-                    return (
-                      <div className="flex gap-4" key={j}>
-                        <span>-</span>
-                        <div className="flex flex-col gap-2 bg-white p-4 text-black rounded-md mb-2">
-                          <p>
-                            {+session?.user?.id === subComment.user_id
-                              ? "You: " + subComment.name
-                              : subComment.name}
-                          </p>
-                          <p>{subComment.comment}</p>
-                          <p>Modified on: {parseDate(subComment.updated_at)}</p>
-                          {+session?.user?.id === subComment.user_id && (
-                            <CommentOperations
-                              comment_id={subComment.id}
-                              comment={subComment.comment}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })} */}
-            {/* </ToggleButton> */}
-            {/* </div> */}
-            {/* );
-            })} */}
+            {modifiedComments.length !== 0 ? (
+              renderComments(modifiedComments, 0)
+            ) : (
+              <p>There are no comments on this product</p>
+            )}
           </div>
         </div>
       </div>

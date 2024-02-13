@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 function ToggleButton({ children, text, hidden }) {
-  const [isOpen, setIsOpen] = useState();
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>

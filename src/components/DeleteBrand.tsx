@@ -1,16 +1,18 @@
 "use client";
 
-import { deleteCategory } from "@/actions/categoryActions";
 import { deleteBrand } from "@/actions/brandActions";
-import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 function DeleteBrand({ brand_id }) {
-  const router = useRouter();
-
   async function handleClick() {
-    await deleteBrand(brand_id);
-    alert(`Brand Id: ${brand_id} deleted`);
-    router.refresh();
+    if (confirm("Do you want to delete this brand")) {
+      const { error } = await deleteBrand(brand_id);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      toast.success(`Brand Id: ${brand_id} deleted`);
+    }
   }
 
   return (

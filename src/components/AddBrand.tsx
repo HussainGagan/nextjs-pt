@@ -1,28 +1,35 @@
 "use client";
 
 import { addBrand } from "@/actions/brandActions";
-import { useRouter } from "next/navigation";
+import { InsertBrands } from "@/types";
 import { useRef, useState } from "react";
+import { toast } from "react-toastify";
 
 function AddBrand() {
   const [isOpen, setIsOpen] = useState(false);
   const formRef = useRef<any>();
-  const router = useRouter();
 
   async function brandAction(formData: FormData) {
-    const brand = formData.get("brand");
+    const brand = formData.get("brand") as string;
     let website = formData.get("website") as string;
-    if (!website?.startsWith("http")) {
+    if (!brand) {
+      toast.error("brand name is required");
+      return;
+    }
+    if (website && !website?.startsWith("http")) {
       website = `http://${website}`;
     }
-    const value = {
+    const value: InsertBrands = {
       name: brand,
       website,
     };
-    await addBrand(value);
+    const { error } = await addBrand(value);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Brand added successfully");
     setIsOpen(false);
-    formRef?.current?.reset();
-    router.refresh();
   }
 
   return (

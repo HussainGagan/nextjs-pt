@@ -1,11 +1,10 @@
 "use client";
 import { selectCategoriesFormat } from "@/utils";
-import { getAllCategories } from "@/actions/categoryActions";
 import { postCategory } from "@/actions/categoryActions";
-import { revalidatePath } from "next/cache";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+
+import { useState } from "react";
 import Select from "react-select";
+import { toast } from "react-toastify";
 
 function AddCategory({ categories }) {
   const [categoryName, setCategoryName] = useState("");
@@ -15,7 +14,6 @@ function AddCategory({ categories }) {
     value: "",
     label: "None",
   });
-  const router = useRouter();
 
   function handleCategories(selectedCategories) {
     setSelectedCategory(selectedCategories);
@@ -23,20 +21,24 @@ function AddCategory({ categories }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    try {
-      const category = {
-        name: categoryName,
-        ...(selectedCategory.value && { parent_id: selectedCategory.value }),
-      };
-      await postCategory(category);
-      setCategoryName("");
-      setSelectedCategory({ value: "", label: "None" });
-      setIsOpen(false);
-      alert("category submitted");
-      router.refresh();
-    } catch (err) {
-      console.log(err.message);
+
+    const category = {
+      name: categoryName,
+      ...(selectedCategory.value && { parent_id: selectedCategory.value }),
+    };
+    const { error } = await postCategory(category);
+    if (error?.startsWith("Duplicate")) {
+      toast.error("Duplicate category name");
+      return;
     }
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setCategoryName("");
+    setSelectedCategory({ value: "", label: "None" });
+    setIsOpen(false);
+    toast.success("category submitted");
   }
 
   return (

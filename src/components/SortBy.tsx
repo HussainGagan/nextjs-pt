@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const sortingOptions = [
   { value: "price-asc", label: "Sort by price(asc)" },

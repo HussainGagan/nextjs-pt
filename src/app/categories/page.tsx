@@ -2,13 +2,16 @@ import AddCategory from "@/components/AddCategory";
 import DeleteCategory from "@/components/DeleteCategory";
 import EditCategory from "@/components/EditCategory";
 import { convertToNestedCategories } from "@/utils";
-import { getAllCategories } from "@/actions/categoryActions";
+import { getCategories } from "@/actions/categoryActions";
 import { getServerSession } from "next-auth";
 import React from "react";
-import { authOptions } from "../api/auth/[...nextauth]/route";
+import { authOptions } from "../../utils/authOptions";
+import { cookies } from "next/headers";
+
+// export const dynamic = "force-dynamic";
 
 async function Categories() {
-  const categories = await getAllCategories();
+  const categories = await getCategories();
   const session = await getServerSession(authOptions);
   const modifiedCategories = convertToNestedCategories(categories);
 
@@ -41,11 +44,13 @@ async function Categories() {
   }
 
   return (
-    <div className="py-8">
-      {!session && (
-        <h1>You need to sign in before performing any operations</h1>
-      )}
+    <div className="pb-16">
       <h1 className="text-lg font-bold">All Categories & its SubCategories</h1>
+      {!session && (
+        <p className="text-lg mb-2">
+          You need to sign in before performing any operations
+        </p>
+      )}
       {session && <AddCategory categories={categories} />}
 
       {renderCategories(modifiedCategories, 0)}

@@ -1,29 +1,25 @@
 "use client";
-
-import { deleteCategory, editCategory } from "@/actions/categoryActions";
-import { useRouter } from "next/navigation";
+import { editCategory } from "@/actions/categoryActions";
 import { useState } from "react";
+import { toast } from "react-toastify";
 
 function EditCategory({ category }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const router = useRouter();
-
   async function handleEdit(formData: FormData) {
-    try {
-      const name = formData.get("name");
-      // if (category.name === name) {
-      //   alert("Category name is same");
-      //   return;
-      // }
-      await editCategory(category.id, { name });
-      alert(`Category Id: ${category.id} Edited`);
-      setIsOpen(false);
-
-      router.refresh();
-    } catch (err) {
-      alert(err.message);
+    const name = formData.get("name");
+    // if (category.name === name) {
+    //   alert("Category name is same");
+    //   return;
+    // }
+    const { error } = await editCategory(category.id, { name } as any);
+    if (error) {
+      toast.error(error);
+      return;
     }
+
+    toast.success(`Category Id: ${category.id} Edited`);
+    setIsOpen(false);
   }
 
   return (
