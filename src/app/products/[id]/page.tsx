@@ -70,8 +70,8 @@ async function Product({
           <div className={`${comment.parent_comment_id && "flex gap-2"}`}>
             {comment.parent_comment_id && (
               <span>
-                {Array.from({ length: depth }, () => (
-                  <>&emsp;</>
+                {Array.from({ length: depth }, (_, i) => (
+                  <span key={i}>&emsp;</span>
                 ))}
                 -
               </span>

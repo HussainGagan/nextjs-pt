@@ -24,8 +24,8 @@ async function Categories() {
         >
           <div className="mb-4">
             <span>
-              {Array.from({ length: depth }, () => (
-                <>&emsp;</>
+              {Array.from({ length: depth }, (_, i) => (
+                <span key={i}>&emsp;</span>
               ))}
             </span>
             <span>{i + 1}. </span>
@@ -37,7 +37,9 @@ async function Categories() {
               </>
             ) : null}
           </div>
-          {renderCategories(category.subCategories, depth + 1)}
+          {category.subCategories.length > 0
+            ? renderCategories(category.subCategories, depth + 1)
+            : null}
         </div>
       );
     });

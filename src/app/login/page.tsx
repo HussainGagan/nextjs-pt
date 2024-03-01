@@ -1,5 +1,4 @@
 "use client";
-import { revalidatePathFromClient } from "@/actions/revalidateAction";
 import { useQueryParams } from "@/hooks/useQueryParams";
 import { loginSchema } from "@/schemas/login";
 import { useFormik } from "formik";
@@ -36,7 +35,7 @@ function Login() {
         if (res?.ok && !res.error) {
           toast.success("logged in successfully");
           router.refresh();
-          router.replace("/");
+          router.replace("/products");
         }
         if (res?.error) {
           toast.error("Incorrect email or password");

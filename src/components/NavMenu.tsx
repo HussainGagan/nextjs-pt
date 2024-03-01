@@ -34,6 +34,7 @@ export default function NavMenu() {
       <Link href={"/categories"}>Categories</Link>
       <Link href={"/brands"}>Brands</Link>
       <Link href={"/register"}>Register</Link>
+
       {/* <button
         className="ml-auto"
         onClick={async () => {

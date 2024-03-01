@@ -7,13 +7,13 @@ import { revalidatePath } from "next/cache";
 
 export async function getBrands({ sortDesc = false } = {}) {
   try {
-    let brands = db.selectFrom("brands").selectAll();
+    let dbQuery = db.selectFrom("brands").selectAll();
 
     if (sortDesc) {
-      brands = brands.orderBy("created_at desc");
+      dbQuery = dbQuery.orderBy("created_at desc");
     }
 
-    brands = await brands.execute();
+    const brands = await dbQuery.execute();
 
     return brands;
   } catch (error) {

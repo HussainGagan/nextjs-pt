@@ -7,13 +7,13 @@ import { authOptions } from "@/utils/authOptions";
 
 export async function getCategories({ sortDesc = false } = {}) {
   try {
-    let categories = db.selectFrom("categories").selectAll();
+    let dbQuery = db.selectFrom("categories").selectAll();
 
     if (sortDesc) {
-      categories = categories.orderBy("categories.created_at desc");
+      dbQuery = dbQuery.orderBy("categories.created_at desc");
     }
 
-    categories = await categories.execute();
+    const categories = await dbQuery.execute();
 
     return categories;
   } catch (error) {

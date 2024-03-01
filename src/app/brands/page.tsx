@@ -1,9 +1,9 @@
+import { getBrands } from "@/actions/brandActions";
 import AddBrand from "@/components/AddBrand";
 import DeleteBrand from "@/components/DeleteBrand";
 import EditBrand from "@/components/EditBrand";
-import { getBrands } from "@/actions/brandActions";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/utils/authOptions";
+import { getServerSession } from "next-auth";
 
 async function Brands() {
   const brands = await getBrands();
